@@ -2,8 +2,6 @@ import { createSignal } from 'solid-js';
 import styles from './App.module.css';
 
 function App() {
-  console.log(abc);
-
   const [count, setCount] = createSignal(0);
 
   return (
