@@ -16,7 +16,7 @@ function App() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          Learn Solid
+          Learn new things in solid
         </a>
         <p class={styles.counter}>
           <button onClick={() => setCount(count() - 1)}>-</button>
