@@ -11,6 +11,8 @@ pre-commit:
       stage_fixed: true
     build:
       run: npm run build
+    test:
+      run: npm test
 
 commit-msg:
   commands:
