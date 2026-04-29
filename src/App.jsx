@@ -8,7 +8,7 @@ function App() {
     <div class={styles.App}>
       <header class={styles.header}>
         <p>
-          Edit <code>src/App.jsx</code> and save to reload
+          Edit <code>src/App.jsx</code> and save to reload.
         </p>
         <a
           class={styles.link}
