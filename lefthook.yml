@@ -18,3 +18,19 @@ commit-msg:
   commands:
     commitlint:
       run: npx commitlint --edit {1}
+
+# post-commit is NOT bypassed by --no-verify
+post-commit:
+  commands:
+    guard:
+      run: |
+        if [ ! -f .git/.hooks-verified ]; then
+          echo ""
+          echo "❌  --no-verify is not allowed in this project."
+          echo "    Your commit has been rolled back."
+          echo "    Please fix the issues and commit again."
+          echo ""
+          git reset --soft HEAD~1
+          exit 1
+        fi
+        rm -f .git/.hooks-verified
