@@ -11,8 +11,12 @@ pre-commit:
       stage_fixed: true
     build:
       run: npm run build
+    coverage:
+      run: npx vitest run --coverage --coverage.include=src/** --coverage.all --coverage.thresholds.lines=80 --coverage.thresholds.functions=80 --coverage.thresholds.branches=80 --coverage.thresholds.statements=80
     test:
       run: npm test
+    verify:
+      run: mkdir -p .git && touch .git/.hooks-verified
 
 commit-msg:
   commands:
