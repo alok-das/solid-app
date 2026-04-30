@@ -90,7 +90,7 @@ pre-push:
     sonar:
       run: npm run sonar
 
-    # Enforces branch naming convention before code reaches remote.
+    # Enforces branch naming convention before code reaches remote
     # Allowed: feat/my-feature, fix/my-bug, chore/my-task, hotfix/my-fix, release/1.0.0
     branch-name:
       run: |
