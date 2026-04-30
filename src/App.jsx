@@ -3,6 +3,7 @@ import styles from './App.module.css';
 
 function App() {
   const [count, setCount] = createSignal(0);
+  const [count2, setCount2] = createSignal(0);
 
   return (
     <div class={styles.App}>
