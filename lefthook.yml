@@ -95,7 +95,7 @@ pre-push:
     branch-name:
       run: |
         branch=$(git rev-parse --abbrev-ref HEAD)
-        if ! echo "$branch" | grep -qE '^(feat|fix|chore|hotfix|release)\/[a-z0-9-]+$'; then
+        if ! echo "$branch" | grep -qE '^(main|(feat|fix|chore|hotfix|release)\/[a-z0-9-]+)$'; then
           echo ""
           echo "ERROR: Invalid branch name - $branch"
           echo "Branch must match: feat/my-feature, fix/my-bug, chore/my-task"
