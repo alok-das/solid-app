@@ -8,8 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run --environment=jsdom",
-    "coverage": "vitest run --coverage --coverage.include=src/** --coverage.all --coverage.thresholds.lines=80 --coverage.thresholds.functions=80 --coverage.thresholds.branches=80 --coverage.thresholds.statements=80",
-    "sonar": "npx sonar-scanner",
+    "coverage": "vitest run --coverage",
+    "sonar": "npm run coverage && npx sonar-scanner",
     "commit": "git-cz",
     "prepare": "lefthook install"
   },

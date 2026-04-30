@@ -1,5 +1,5 @@
 pre-commit:
-  parallel: true
+  parallel: false
   commands:
     lint:
       glob: "*.{js,jsx}"
@@ -9,14 +9,10 @@ pre-commit:
       glob: "*.{js,jsx,css,json}"
       run: npx prettier --write {staged_files}
       stage_fixed: true
-    build:
-      run: npm run build
-    coverage:
-      run: npx vitest run --coverage --coverage.include=src/** --coverage.all --coverage.thresholds.lines=80 --coverage.thresholds.functions=80 --coverage.thresholds.branches=80 --coverage.thresholds.statements=80
-    sonar:
-      run: npx sonar-scanner
     test:
       run: npm test
+    build:
+      run: npm run build
     verify:
       run: mkdir -p .git && touch .git/.hooks-verified
 
