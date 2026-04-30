@@ -32,9 +32,9 @@ pre-commit:
       priority: 2
       run: npm run build
 
-    # Priority 3: Timestamped verify token
+    # Priority 3: Timestamped verify token (initial write)
     # Only written if ALL above commands pass.
-    # post-commit checks this token freshness (within 60s) to detect --no-verify.
+    # commit-msg will invalidate and re-issue this token to prevent stale reuse.
     verify:
       priority: 3
       run: mkdir -p .git && date +%s > .git/.hooks-verified
@@ -44,12 +44,30 @@ pre-commit:
 commit-msg:
   commands:
 
-    # Validates commit message against conventional commit format.
+    # Priority 1: Invalidate any token left over from a previously aborted commit.
+    # Without this, a failed commit-msg (e.g. bad message) leaves a valid token
+    # on disk. A subsequent --no-verify commit would find that stale token and
+    # pass the post-commit guard — this step closes that loophole.
+    invalidate-token:
+      priority: 1
+      run: rm -f .git/.hooks-verified
+
+    # Priority 2: Validate commit message against conventional commit format.
+    # If this fails, git aborts here and the token stays deleted — any future
+    # --no-verify attempt will be caught by the post-commit guard.
     commitlint:
+      priority: 2
       run: npx commitlint --edit {1}
+
+    # Priority 3: Re-issue a fresh token now that the message is confirmed valid.
+    # post-commit will verify this token's freshness (within 60s).
+    revalidate-token:
+      priority: 3
+      run: date +%s > .git/.hooks-verified
 
     # Remind developers to use commitizen for guided commits
     remind-commitizen:
+      priority: 3
       run: echo "Tip - Use npm run commit for an interactive conventional commit prompt."
 
 
@@ -90,7 +108,7 @@ pre-push:
     sonar:
       run: npm run sonar
 
-    # Enforces branch naming convention before code reaches remote
+    # Enforces branch naming convention before code reaches remote.
     # Allowed: feat/my-feature, fix/my-bug, chore/my-task, hotfix/my-fix, release/1.0.0
     branch-name:
       run: |
