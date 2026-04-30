@@ -12,7 +12,7 @@ pre-commit:
     # stage_fixed re-stages auto-fixed files before test/build picks them up.
     lint:
       priority: 1
-      glob: "**/*.{js,jsx}"
+      glob: "*.{js,jsx}"
       run: npx eslint --fix {staged_files}
       stage_fixed: true
 
