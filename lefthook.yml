@@ -1,38 +1,107 @@
-pre-commit:
-  parallel: true
-  commands:
-    lint:
-      glob: "*.{js,jsx}"
-      run: npx eslint --fix {staged_files}
-      stage_fixed: true
-    format:
-      glob: "*.{js,jsx,css,json}"
-      run: npx prettier --write {staged_files}
-      stage_fixed: true
-    test:
-      run: npm test
-    build:
-      run: npm run build
-    verify:
-      run: mkdir -p .git && touch .git/.hooks-verified
+# =============================================================================
+# lefthook.yml — Pre-commit automation config
+# Project: my-app (SolidJS + Vite + Vitest)
+# =============================================================================
 
+# ─── PRE-COMMIT ──────────────────────────────────────────────────────────────
+pre-commit:
+  commands:
+
+    # ── Priority 1 (parallel): Lint + Secret Scan ───────────────────────────
+    # Runs first. ESLint handles both linting AND prettier formatting via
+    # eslint-plugin-prettier (removes need for a separate prettier command).
+    # stage_fixed re-stages any auto-fixed files before test/build picks them up.
+    lint:
+      priority: 1
+      glob: "**/*.{js,jsx}"             # covers src/ and all subdirectories
+      run: npx eslint --fix {staged_files}
+      stage_fixed: true                  # re-stages auto-fixed files
+
+    # Scans all files for accidentally committed secrets (API keys, tokens, etc.)
+    secrets:
+      priority: 1
+      run: npx secretlint --secretlintrc .secretlintrc.json "**/*"
+
+    # ── Priority 2 (parallel): Coverage + Build ─────────────────────────────
+    # Runs after lint fixes are staged. Both run in parallel to save time.
+    # Coverage uses `npm run coverage` (vitest run --coverage) which enforces
+    # the 80% threshold configured in vitest.config.ts.
+    coverage:
+      priority: 2
+      run: npm run coverage              # vitest run --coverage — threshold enforced in vitest.config.ts
+
+    build:
+      priority: 2
+      run: npm run build
+
+    # ── Priority 3: Timestamped verify token ────────────────────────────────
+    # Only written if ALL above commands pass.
+    # post-commit checks this token's freshness (within 60s) to detect --no-verify.
+    verify:
+      priority: 3
+      run: mkdir -p .git && date +%s > .git/.hooks-verified
+
+
+# ─── COMMIT-MSG ──────────────────────────────────────────────────────────────
 commit-msg:
   commands:
+
+    # Validates commit message against conventional commit format.
+    # Use `npm run commit` for an interactive prompt (commitizen).
     commitlint:
       run: npx commitlint --edit {1}
 
-# post-commit is NOT bypassed by --no-verify
+    remind-commitizen:
+      run: echo "💡 Tip: Use 'npm run commit' for an interactive conventional commit prompt."
+
+
+# ─── POST-COMMIT (NOT skipped by --no-verify) ────────────────────────────────
+# Validates that pre-commit hooks actually ran by checking the verify token.
+# Token must exist AND be written within the last 60 seconds.
+# If check fails → commit is rolled back with git reset --soft HEAD~1.
 post-commit:
   commands:
     guard:
       run: |
-        if [ ! -f .git/.hooks-verified ]; then
+        created=$(cat .git/.hooks-verified 2>/dev/null || echo 0)
+        now=$(date +%s)
+        diff=$((now - created))
+
+        if [ ! -f .git/.hooks-verified ] || [ "$diff" -gt 60 ]; then
           echo ""
           echo "❌  --no-verify is not allowed in this project."
           echo "    Your commit has been rolled back."
-          echo "    Please fix the issues and commit again."
+          echo "    Please fix all issues and commit again."
+          echo "    Use 'npm run commit' for guided conventional commits."
           echo ""
           git reset --soft HEAD~1
           exit 1
         fi
+
         rm -f .git/.hooks-verified
+
+
+# ─── PRE-PUSH ─────────────────────────────────────────────────────────────────
+# Heavier checks that run before code reaches remote.
+# Sonar runs here (not on every commit) since it's a reporting/analytics tool.
+pre-push:
+  parallel: true
+  commands:
+
+    # Runs coverage first (already collected), then ships report to SonarQube.
+    sonar:
+      run: npm run sonar
+
+    # Enforces branch naming convention before code reaches remote.
+    # Allowed patterns: feat/my-feature, fix/my-bug, chore/my-task,
+    #                   hotfix/my-fix, release/1.0.0
+    branch-name:
+      run: |
+        branch=$(git rev-parse --abbrev-ref HEAD)
+        if ! echo "$branch" | grep -qE '^(feat|fix|chore|hotfix|release)\/[a-z0-9-]+$'; then
+          echo ""
+          echo "❌  Invalid branch name: '$branch'"
+          echo "    Branch must match: feat/my-feature, fix/my-bug, chore/my-task"
+          echo ""
+          exit 1
+        fi
