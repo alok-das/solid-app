@@ -12,7 +12,7 @@ pre-commit:
     # stage_fixed re-stages auto-fixed files before test/build picks them up
     lint:
       priority: 1
-      glob: "*.{js,jsx}"
+      glob: "*.{js,jsx,ts,tsx}"
       run: npx eslint --fix {staged_files}
       stage_fixed: true
 
@@ -23,7 +23,7 @@ pre-commit:
 
     # Priority 2 (parallel): Coverage + Build
     # Runs after lint fixes are staged.
-    # Threshold (80%) is enforced via vitest.config.ts coverageThresholds.
+    # Threshold (80%) is enforced via vitest.config.js coverage thresholds.
     coverage:
       priority: 2
       run: npm run coverage
@@ -32,20 +32,19 @@ pre-commit:
       priority: 2
       run: npm run build
 
-    # Priority 3: Timestamped verify token (initial write)
+    # Priority 3: Timestamped pre-commit token (initial write)
     # Only written if ALL above commands pass.
-    # commit-msg is responsible for the final state of this token:
-    # it deletes it first, then re-writes it ONLY if commitlint passes.
+    # commit-msg validates this before writing the final post-commit token.
     verify:
       priority: 3
-      run: mkdir -p .git && date +%s > .git/.hooks-verified
+      run: date +%s > "$(git rev-parse --git-path .precommit-verified)"
 
 
 # --- COMMIT-MSG ---------------------------------------------------------------
 commit-msg:
   commands:
 
-    # Atomic commitlint + token lifecycle management.
+    # Atomic pre-commit check + commitlint + token lifecycle management.
     #
     # Why a single command instead of separate priority steps:
     # Lefthook priorities define execution ORDER only — they do NOT short-circuit
@@ -54,15 +53,19 @@ commit-msg:
     # that the post-commit guard would wrongly accept.
     #
     # Shell && guarantees atomicity:
-    #   1. Token is always deleted first (rm -f is unconditional).
-    #   2. commitlint runs.
-    #   3. Token is re-written ONLY if commitlint exits 0 — enforced by the
+    #   1. Final token is always deleted first (rm -f is unconditional).
+    #   2. pre-commit token must exist, proving pre-commit ran.
+    #   3. commitlint runs.
+    #   4. Final token is re-written ONLY if commitlint exits 0 — enforced by the
     #      shell, not by Lefthook. If commitlint fails, the token stays deleted
     #      and any subsequent --no-verify attempt will be caught by post-commit.
     commitlint:
       run: |
-        rm -f .git/.hooks-verified
-        npx commitlint --edit {1} && date +%s > .git/.hooks-verified
+        precommit_token="$(git rev-parse --git-path .precommit-verified)"
+        final_token="$(git rev-parse --git-path .hooks-verified)"
+        rm -f "$final_token"
+        test -f "$precommit_token"
+        npx commitlint --edit {1} && date +%s > "$final_token"
 
     # Remind developers to use commitizen for guided commits
     remind-commitizen:
@@ -77,11 +80,13 @@ post-commit:
   commands:
     guard:
       run: |
-        created=$(cat .git/.hooks-verified 2>/dev/null || echo 0)
+        precommit_token="$(git rev-parse --git-path .precommit-verified)"
+        final_token="$(git rev-parse --git-path .hooks-verified)"
+        created=$(cat "$final_token" 2>/dev/null || echo 0)
         now=$(date +%s)
         diff=$((now - created))
 
-        if [ ! -f .git/.hooks-verified ] || [ "$diff" -gt 60 ]; then
+        if [ ! -f "$final_token" ] || [ "$diff" -gt 60 ]; then
           echo ""
           echo "ERROR: --no-verify is not allowed in this project."
           echo "Your commit has been rolled back."
@@ -92,7 +97,7 @@ post-commit:
           exit 1
         fi
 
-        rm -f .git/.hooks-verified
+        rm -f "$precommit_token" "$final_token"
 
 
 # --- PRE-PUSH -----------------------------------------------------------------
@@ -111,10 +116,10 @@ pre-push:
     branch-name:
       run: |
         branch=$(git rev-parse --abbrev-ref HEAD)
-        if ! echo "$branch" | grep -qE '^(main|(feat|fix|chore|hotfix|release)\/[a-z0-9-]+)$'; then
+        if ! echo "$branch" | grep -qE '^(main|(feat|fix|chore|hotfix)\/[a-z0-9-]+|release\/[0-9]+\.[0-9]+\.[0-9]+)$'; then
           echo ""
           echo "ERROR: Invalid branch name - $branch"
-          echo "Branch must match: feat/my-feature, fix/my-bug, chore/my-task"
+          echo "Branch must match: feat/my-feature, fix/my-bug, chore/my-task, release/1.0.0"
           echo ""
           exit 1
         fi
