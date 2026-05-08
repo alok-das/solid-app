@@ -7,7 +7,7 @@
 pre-commit:
   commands:
 
-    # Priority 1 (parallel): Lint + Secret Scan
+    # Priority 1 (parallel): Lint + Secret Scan test
     # ESLint handles both linting AND prettier via eslint-plugin-prettier.
     # stage_fixed re-stages auto-fixed files before test/build picks them up
     lint:
