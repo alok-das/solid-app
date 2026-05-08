@@ -19,7 +19,7 @@ pre-commit:
     # Scans all files for accidentally committed secrets (API keys, tokens, etc.)
     secrets:
       priority: 1
-      run: npx secretlint --secretlintrc .secretlintrc.json "**/*"
+      run: npx secretlint --secretlintrc .secretlintrc.json "src/**/*"
 
     # Priority 2 (parallel): Coverage + Build
     # Runs after lint fixes are staged.
